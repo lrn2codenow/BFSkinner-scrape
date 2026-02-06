@@ -94,6 +94,7 @@ class BFSkinnerScraper:
     def crawl(self) -> List[ResourceRecord]:
         """Execute the crawl starting at ``base_url``."""
         queue: deque[str] = deque([self.base_url])
+        enqueued: Set[str] = {self.base_url}
         resources: List[ResourceRecord] = []
 
         while queue and len(self._visited) < self.max_pages:
@@ -116,8 +117,9 @@ class BFSkinnerScraper:
             resources.extend(self._extract_resources(url, page_title, soup))
 
             for link in self._extract_internal_links(url, soup):
-                if link not in self._visited and link not in queue:
+                if link not in self._visited and link not in enqueued:
                     queue.append(link)
+                    enqueued.add(link)
 
             if self.request_delay:
                 time.sleep(self.request_delay)
@@ -128,7 +130,7 @@ class BFSkinnerScraper:
     def _fetch(self, url: str) -> Optional[str]:
         response = self.session.get(url, timeout=self.timeout)
         if not response.ok:
-            logger.warning("Non-200 response for %s: %s", url, response.status_code)
+            logger.warning("HTTP %s for %s", response.status_code, url)
             return None
         if "text/html" not in response.headers.get("Content-Type", ""):
             logger.debug("Skipping non-HTML content at %s", url)
@@ -204,7 +206,7 @@ class BFSkinnerScraper:
     def _is_internal_url(self, url: str) -> bool:
         parsed = urlparse(url)
         base = urlparse(self.base_url)
-        return parsed.netloc == base.netloc or (not parsed.netloc and parsed.path)
+        return parsed.netloc == base.netloc or bool(not parsed.netloc and parsed.path)
 
     @staticmethod
     def _normalize_url(url: str) -> str:

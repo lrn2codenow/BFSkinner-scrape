@@ -112,7 +112,7 @@ class Scraper:
                 charset = response.headers.get_content_charset() if response.headers else None
                 encoding = charset or "utf-8"
                 payload = response.read()
-        except urllib.error.URLError as exc:  # pragma: no cover - integration detail
+        except urllib.error.URLError as exc:
             raise ScraperError(f"Failed to fetch URL: {url}") from exc
 
         return payload.decode(encoding, errors="replace")
